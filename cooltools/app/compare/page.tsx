@@ -1,16 +1,36 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Plus, X } from 'lucide-react';
 import { searchPhones, getPhoneDetails, PhoneListItem, PhoneSpec } from '@/lib/phoneApi';
 
 export default function ComparePage() {
+  const searchParams = useSearchParams();
   const [selectedPhones, setSelectedPhones] = useState<PhoneListItem[]>([]);
   const [phoneDetails, setPhoneDetails] = useState<Record<string, PhoneSpec>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PhoneListItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Handle URL parameters for pre-filling comparison
+  useEffect(() => {
+    const addParam = searchParams.get('add');
+    if (addParam && selectedPhones.length === 0) {
+      getPhoneDetails(addParam).then(phone => {
+        if (phone) {
+          const phoneItem: PhoneListItem = {
+            phone_name: phone.phone_name,
+            phone_url: `/${addParam}`,
+            phone_image: phone.phone_images?.[0] || '',
+            detail: phone.brand || ''
+          };
+          setSelectedPhones([phoneItem]);
+        }
+      });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadPhoneDetails() {
