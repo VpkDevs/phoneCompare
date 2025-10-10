@@ -33,9 +33,11 @@ export default function PhonesPage() {
     loadData();
   }, []);
 
-  const filteredPhones = phones.filter(phone =>
-    phone.phone_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPhones = searchQuery.trim() 
+    ? phones.filter(phone =>
+        phone.phone_name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : phones;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

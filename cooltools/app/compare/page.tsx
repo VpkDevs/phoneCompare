@@ -10,21 +10,40 @@ export default function ComparePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PhoneListItem[]>([]);
   const [searching, setSearching] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     async function loadPhoneDetails() {
-      for (const phone of selectedPhones) {
-        const slug = phone.phone_url.split('/').pop();
-        if (slug && !phoneDetails[slug]) {
-          const details = await getPhoneDetails(slug);
-          if (details) {
-            setPhoneDetails(prev => ({ ...prev, [slug]: details }));
+      const slugsToLoad = selectedPhones
+        .map(phone => phone.phone_url.split('/').pop())
+        .filter((slug): slug is string => !!slug && !phoneDetails[slug]);
+      
+      if (slugsToLoad.length === 0) return;
+      
+      setLoadingDetails(true);
+      try {
+        const results = await Promise.allSettled(
+          slugsToLoad.map(slug => getPhoneDetails(slug))
+        );
+        
+        const newDetails: Record<string, PhoneSpec> = {};
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value) {
+            newDetails[slugsToLoad[index]] = result.value;
           }
+        });
+        
+        if (Object.keys(newDetails).length > 0) {
+          setPhoneDetails(prev => ({ ...prev, ...newDetails }));
         }
+      } catch (error) {
+        console.error('Failed to load phone details:', error);
+      } finally {
+        setLoadingDetails(false);
       }
     }
     loadPhoneDetails();
-  }, [selectedPhones]);
+  }, [selectedPhones, phoneDetails]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -50,7 +69,8 @@ export default function ComparePage() {
       return; // Already added
     }
     if (selectedPhones.length >= 4) {
-      alert('Maximum 4 phones can be compared at once');
+      // Using a more modern approach instead of alert
+      console.warn('Maximum 4 phones can be compared at once');
       return;
     }
     setSelectedPhones([...selectedPhones, phone]);
@@ -158,9 +178,17 @@ export default function ComparePage() {
             </div>
 
             <div className="border-t border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                Comparison Features
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Comparison Features
+                </h3>
+                {loadingDetails && (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm">Loading details...</span>
+                  </div>
+                )}
+              </div>
               <div className="space-y-6">
                 <div>
                   <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Display</h4>

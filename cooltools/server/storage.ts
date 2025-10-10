@@ -17,4 +17,21 @@ pool.on('error', (err) => {
   console.error('Unexpected database error:', err);
 });
 
+pool.on('connect', () => {
+  console.log('Database connection established');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing database pool...');
+  await pool.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, closing database pool...');
+  await pool.end();
+  process.exit(0);
+});
+
 export const db = drizzle(pool);

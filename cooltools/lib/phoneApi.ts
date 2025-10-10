@@ -147,21 +147,29 @@ export async function searchPhones(query: string): Promise<PhoneListItem[]> {
   }
 }
 
-// Get phone details
-export async function getPhoneDetails(slug: string): Promise<PhoneSpec | null> {
+// Get phone details with retry logic
+export async function getPhoneDetails(slug: string, retries = 2): Promise<PhoneSpec | null> {
   const cacheKey = `phone-${slug}`;
   const cached = getCached<PhoneSpec>(cacheKey);
   if (cached) return cached;
 
-  try {
-    const response = await axios.get(`${API_BASE_URL}/${slug}`);
-    const data = response.data.data || null;
-    if (data) setCache(cacheKey, data);
-    return data;
-  } catch (error) {
-    console.error('Error fetching phone details:', error);
-    return null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/${slug}`, {
+        timeout: 5000
+      });
+      const data = response.data.data || null;
+      if (data) setCache(cacheKey, data);
+      return data;
+    } catch (error) {
+      if (attempt === retries) {
+        console.error(`Error fetching phone details for ${slug} after ${retries + 1} attempts:`, error);
+        return null;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
   }
+  return null;
 }
 
 // Get top phones by interest
