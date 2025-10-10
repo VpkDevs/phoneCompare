@@ -58,6 +58,7 @@ export default function PhonesPage() {
                 placeholder="Search phones..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search phones"
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             </div>

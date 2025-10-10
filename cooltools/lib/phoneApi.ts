@@ -3,6 +3,22 @@ import axios from 'axios';
 // Phone Specs API configuration
 const API_BASE_URL = 'https://api-mobilespecs.azharimm.dev';
 
+// Simple in-memory cache
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCached<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
 export interface PhoneSpec {
   phone_name: string;
   brand: string;
@@ -76,9 +92,15 @@ export interface PhoneListItem {
 
 // Get all brands
 export async function getAllBrands(): Promise<PhoneBrand[]> {
+  const cacheKey = 'brands';
+  const cached = getCached<PhoneBrand[]>(cacheKey);
+  if (cached) return cached;
+
   try {
     const response = await axios.get(`${API_BASE_URL}/brands`);
-    return response.data.data || [];
+    const data = response.data.data || [];
+    setCache(cacheKey, data);
+    return data;
   } catch (error) {
     console.error('Error fetching brands:', error);
     return [];
@@ -127,9 +149,15 @@ export async function searchPhones(query: string): Promise<PhoneListItem[]> {
 
 // Get phone details
 export async function getPhoneDetails(slug: string): Promise<PhoneSpec | null> {
+  const cacheKey = `phone-${slug}`;
+  const cached = getCached<PhoneSpec>(cacheKey);
+  if (cached) return cached;
+
   try {
     const response = await axios.get(`${API_BASE_URL}/${slug}`);
-    return response.data.data || null;
+    const data = response.data.data || null;
+    if (data) setCache(cacheKey, data);
+    return data;
   } catch (error) {
     console.error('Error fetching phone details:', error);
     return null;

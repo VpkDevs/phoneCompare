@@ -78,12 +78,13 @@ export default function ComparePage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
-              type="text"
-              placeholder="Search for phones to compare..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            />
+                type="text"
+                placeholder="Search for phones to compare..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                aria-label="Search phones to compare"
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
           </div>
           {searchQuery.length >= 2 && (
             <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
@@ -97,6 +98,7 @@ export default function ComparePage() {
                   key={index}
                   onClick={() => addPhone(phone)}
                   className="w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-4 border-b border-gray-200 dark:border-gray-700 last:border-0"
+                  aria-label={`Add ${phone.phone_name} to compare`}
                 >
                   {phone.phone_image && (
                     <img src={phone.phone_image} alt={phone.phone_name} className="w-16 h-16 object-contain" />
@@ -132,7 +134,7 @@ export default function ComparePage() {
                   <button
                     onClick={() => removePhone(phone.phone_url)}
                     className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition z-10"
-                    aria-label={`Remove ${phone.phone_name}`}
+                    aria-label={`Remove ${phone.phone_name} from comparison`}
                   >
                     <X className="w-4 h-4" />
                   </button>
