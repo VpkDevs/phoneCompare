@@ -33,6 +33,16 @@ export default function PhonesPage() {
     loadData();
   }, []);
 
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setIsSearching(true);
+      const timer = setTimeout(() => setIsSearching(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery]);
+
   const filteredPhones = searchQuery.trim() 
     ? phones.filter(phone =>
         phone.phone_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -71,10 +81,23 @@ export default function PhonesPage() {
           </button>
         </div>
 
+        {searchQuery && !isSearching && (
+          <div className="mb-4 text-gray-600 dark:text-gray-400">
+            Found {filteredPhones.length} {filteredPhones.length === 1 ? 'phone' : 'phones'}
+          </div>
+        )}
+
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading phones...</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                <div className="p-4 space-y-3">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -85,6 +108,13 @@ export default function PhonesPage() {
             >
               Retry
             </button>
+          </div>
+        ) : filteredPhones.length === 0 ? (
+          <div className="text-center py-12">
+            <Search className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              {searchQuery ? `No phones found matching "${searchQuery}"` : 'No phones available'}
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

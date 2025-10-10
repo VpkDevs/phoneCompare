@@ -69,8 +69,11 @@ export default function ComparePage() {
       return; // Already added
     }
     if (selectedPhones.length >= 4) {
-      // Using a more modern approach instead of alert
-      console.warn('Maximum 4 phones can be compared at once');
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse';
+      toast.textContent = 'Maximum 4 phones can be compared';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
       return;
     }
     setSelectedPhones([...selectedPhones, phone]);
@@ -81,6 +84,21 @@ export default function ComparePage() {
   const removePhone = (phoneUrl: string) => {
     setSelectedPhones(selectedPhones.filter(p => p.phone_url !== phoneUrl));
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedPhones.length > 0) {
+        setSelectedPhones([]);
+      }
+      if (e.key === '/' && e.ctrlKey) {
+        e.preventDefault();
+        document.querySelector('input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedPhones]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -94,7 +112,25 @@ export default function ComparePage() {
           </p>
         </div>
 
-        <div className="mb-8 relative">
+        <div className="mb-8">
+          <div className="flex gap-4 mb-4">
+            {selectedPhones.length > 0 && (
+              <button
+                onClick={() => {
+                  const slugs = selectedPhones.map(p => p.phone_url.split('/').pop()).join(',');
+                  navigator.clipboard.writeText(`${window.location.origin}/compare?phones=${slugs}`);
+                  const toast = document.createElement('div');
+                  toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                  toast.textContent = 'Comparison link copied!';
+                  document.body.appendChild(toast);
+                  setTimeout(() => toast.remove(), 2000);
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition text-sm"
+              >
+                Share Comparison
+              </button>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input

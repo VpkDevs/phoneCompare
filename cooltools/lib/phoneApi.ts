@@ -7,6 +7,9 @@ const API_BASE_URL = 'https://api-mobilespecs.azharimm.dev';
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Request deduplication
+const pendingRequests = new Map<string, Promise<any>>();
+
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -153,7 +156,13 @@ export async function getPhoneDetails(slug: string, retries = 2): Promise<PhoneS
   const cached = getCached<PhoneSpec>(cacheKey);
   if (cached) return cached;
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  // Check if request is already pending
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey);
+  }
+
+  const requestPromise = (async () => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const response = await axios.get(`${API_BASE_URL}/${slug}`, {
         timeout: 5000
@@ -168,8 +177,13 @@ export async function getPhoneDetails(slug: string, retries = 2): Promise<PhoneS
       }
       await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
     }
-  }
-  return null;
+    return null;
+  })();
+
+  pendingRequests.set(cacheKey, requestPromise);
+  const result = await requestPromise;
+  pendingRequests.delete(cacheKey);
+  return result;
 }
 
 // Get top phones by interest

@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Sliders } from 'lucide-react';
 
 export default function SearchPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [filters, setFilters] = useState({
     brand: '',
     priceMin: '',
@@ -16,6 +19,25 @@ export default function SearchPage() {
     chipset: '',
     storage: '',
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    const newFilters: any = { ...filters };
+    params.forEach((value, key) => {
+      if (key in newFilters) newFilters[key] = value;
+    });
+    setFilters(newFilters);
+  }, []);
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    router.push(`/search?${params.toString()}`);
+  };
+
+  const activeFilterCount = Object.values(filters).filter(v => v).length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -149,8 +171,16 @@ export default function SearchPage() {
                   </select>
                 </div>
 
-                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition">
+                <button 
+                  onClick={handleSearch}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition relative"
+                >
                   Search Phones
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
                 </button>
                 <button 
                   onClick={() => setFilters({
