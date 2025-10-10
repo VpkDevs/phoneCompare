@@ -9,18 +9,26 @@ export default function PhonesPage() {
   const [phones, setPhones] = useState<PhoneListItem[]>([]);
   const [brands, setBrands] = useState<PhoneBrand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [phonesData, brandsData] = await Promise.all([
-        getLatestPhones(),
-        getAllBrands()
-      ]);
-      setPhones(phonesData);
-      setBrands(brandsData);
-      setLoading(false);
+      setError(null);
+      try {
+        const [phonesData, brandsData] = await Promise.all([
+          getLatestPhones(),
+          getAllBrands()
+        ]);
+        setPhones(phonesData);
+        setBrands(brandsData);
+      } catch (err) {
+        setError('Failed to load phones. Please try again later.');
+        console.error('Error loading data:', err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, []);
@@ -64,6 +72,16 @@ export default function PhonesPage() {
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             <p className="mt-4 text-gray-600 dark:text-gray-400">Loading phones...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 dark:text-red-400 text-lg">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+            >
+              Retry
+            </button>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

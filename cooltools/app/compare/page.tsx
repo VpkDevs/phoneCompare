@@ -1,33 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, X } from 'lucide-react';
-import { searchPhones, PhoneListItem } from '@/lib/phoneApi';
+import { searchPhones, getPhoneDetails, PhoneListItem, PhoneSpec } from '@/lib/phoneApi';
 
 export default function ComparePage() {
   const [selectedPhones, setSelectedPhones] = useState<PhoneListItem[]>([]);
+  const [phoneDetails, setPhoneDetails] = useState<Record<string, PhoneSpec>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PhoneListItem[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (query.length < 2) {
-      setSearchResults([]);
-      return;
+  useEffect(() => {
+    async function loadPhoneDetails() {
+      for (const phone of selectedPhones) {
+        const slug = phone.phone_url.split('/').pop();
+        if (slug && !phoneDetails[slug]) {
+          const details = await getPhoneDetails(slug);
+          if (details) {
+            setPhoneDetails(prev => ({ ...prev, [slug]: details }));
+          }
+        }
+      }
     }
-    setSearching(true);
-    const results = await searchPhones(query);
-    setSearchResults(results);
-    setSearching(false);
+    loadPhoneDetails();
+  }, [selectedPhones]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults([]);
+        return;
+      }
+      setSearching(true);
+      const results = await searchPhones(searchQuery);
+      setSearchResults(results);
+      setSearching(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   const addPhone = (phone: PhoneListItem) => {
-    if (selectedPhones.length < 4 && !selectedPhones.find(p => p.phone_url === phone.phone_url)) {
-      setSelectedPhones([...selectedPhones, phone]);
-      setSearchQuery('');
-      setSearchResults([]);
+    if (selectedPhones.find(p => p.phone_url === phone.phone_url)) {
+      return; // Already added
     }
+    if (selectedPhones.length >= 4) {
+      alert('Maximum 4 phones can be compared at once');
+      return;
+    }
+    setSelectedPhones([...selectedPhones, phone]);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const removePhone = (phoneUrl: string) => {
@@ -46,7 +74,7 @@ export default function ComparePage() {
           </p>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 relative">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -57,9 +85,14 @@ export default function ComparePage() {
               className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
           </div>
-          {searchResults.length > 0 && (
-            <div className="absolute z-10 mt-2 w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
-              {searchResults.map((phone, index) => (
+          {searchQuery.length >= 2 && (
+            <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
+              {searching ? (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">Searching...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">No phones found</div>
+              ) : (
+                searchResults.map((phone, index) => (
                 <button
                   key={index}
                   onClick={() => addPhone(phone)}
@@ -74,7 +107,7 @@ export default function ComparePage() {
                   </div>
                   <Plus className="w-5 h-5 text-blue-600" />
                 </button>
-              ))}
+              )))}
             </div>
           )}
         </div>
@@ -99,6 +132,7 @@ export default function ComparePage() {
                   <button
                     onClick={() => removePhone(phone.phone_url)}
                     className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition z-10"
+                    aria-label={`Remove ${phone.phone_name}`}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -129,48 +163,77 @@ export default function ComparePage() {
                 <div>
                   <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Display</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {selectedPhones.map((phone, index) => (
-                      <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Size, Type, Resolution</div>
-                        <div className="text-gray-900 dark:text-white font-medium">Details loading...</div>
-                      </div>
-                    ))}
+                    {selectedPhones.map((phone, index) => {
+                      const slug = phone.phone_url.split('/').pop() || '';
+                      const details = phoneDetails[slug];
+                      return (
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Display</div>
+                          <div className="text-gray-900 dark:text-white font-medium text-sm">
+                            {details?.display?.size || 'N/A'}<br/>
+                            {details?.display?.type || 'N/A'}<br/>
+                            {details?.display?.resolution || 'N/A'}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Performance</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {selectedPhones.map((phone, index) => (
-                      <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Chipset, RAM</div>
-                        <div className="text-gray-900 dark:text-white font-medium">Details loading...</div>
-                      </div>
-                    ))}
+                    {selectedPhones.map((phone, index) => {
+                      const slug = phone.phone_url.split('/').pop() || '';
+                      const details = phoneDetails[slug];
+                      return (
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Performance</div>
+                          <div className="text-gray-900 dark:text-white font-medium text-sm">
+                            {details?.platform?.chipset || 'N/A'}<br/>
+                            {details?.memory?.ram || 'N/A'}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Camera</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {selectedPhones.map((phone, index) => (
-                      <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Main & Selfie</div>
-                        <div className="text-gray-900 dark:text-white font-medium">Details loading...</div>
-                      </div>
-                    ))}
+                    {selectedPhones.map((phone, index) => {
+                      const slug = phone.phone_url.split('/').pop() || '';
+                      const details = phoneDetails[slug];
+                      return (
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Camera</div>
+                          <div className="text-gray-900 dark:text-white font-medium text-sm">
+                            Main: {details?.main_camera?.[0] || 'N/A'}<br/>
+                            Selfie: {details?.selfie_camera?.[0] || 'N/A'}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Battery</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {selectedPhones.map((phone, index) => (
-                      <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Capacity, Charging</div>
-                        <div className="text-gray-900 dark:text-white font-medium">Details loading...</div>
-                      </div>
-                    ))}
+                    {selectedPhones.map((phone, index) => {
+                      const slug = phone.phone_url.split('/').pop() || '';
+                      const details = phoneDetails[slug];
+                      return (
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Battery</div>
+                          <div className="text-gray-900 dark:text-white font-medium text-sm">
+                            {details?.battery?.type || 'N/A'}<br/>
+                            {details?.battery?.charging || 'N/A'}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
